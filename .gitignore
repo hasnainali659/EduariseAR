@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Project-specific
+*.yaml
+*.yml
+calibration_*.npz
+camera_calibration_*.yaml
+*.avi
+*.mp4
+recordings/
+
+# Temporary files
+*.log
+*.tmp
+temp/
+
+# Assets (large files)
+assets/models/*.obj
+assets/models/*.gltf
+assets/models/*.fbx
+assets/videos/
+frontend/node_modules/
