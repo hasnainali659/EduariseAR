@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduariseAR - Simple Test</title>
+    
+    <!-- A-Frame & AR.js -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 999;
+            text-align: center;
+            max-width: 90%;
+        }
+        
+        #instructions h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        
+        #instructions p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        #status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25, 118, 210, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 999;
+            font-size: 16px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Instructions -->
+    <div id="instructions">
+        <h2>🎯 EduariseAR Test</h2>
+        <p><strong>Step 1:</strong> Allow camera access when prompted</p>
+        <p><strong>Step 2:</strong> Point camera at the marker image</p>
+        <p><strong>Step 3:</strong> See the 3D cube and text appear!</p>
+        <p style="font-size: 12px; margin-top: 10px; opacity: 0.8;">
+            Marker location: backend/uploads/markers/marker_0.png
+        </p>
+    </div>
+    
+    <!-- Status -->
+    <div id="status">📷 Starting camera...</div>
+    
+    <!-- AR Scene -->
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false">
+        
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+        
+        <!-- Marker 0 - Shows a rotating cube and text -->
+        <a-marker preset="hiro" id="marker0">
+            <!-- 3D Cube -->
+            <a-box 
+                position="0 0.5 0" 
+                rotation="0 45 0"
+                color="#4CAF50"
+                animation="property: rotation; to: 0 405 0; loop: true; dur: 4000; easing: linear">
+            </a-box>
+            
+            <!-- Text Label -->
+            <a-text 
+                value="Hello AR!" 
+                position="0 1.5 0" 
+                align="center" 
+                color="#FFFFFF"
+                scale="2 2 2">
+            </a-text>
+            
+            <!-- Ground Circle -->
+            <a-circle 
+                position="0 0 0" 
+                rotation="-90 0 0" 
+                radius="1.5" 
+                color="#2196F3" 
+                opacity="0.5">
+            </a-circle>
+        </a-marker>
+        
+    </a-scene>
+    
+    <script>
+        // Update status when marker is found/lost
+        AFRAME.registerComponent('marker-handler', {
+            init: function() {
+                const status = document.getElementById('status');
+                const instructions = document.getElementById('instructions');
+                
+                this.el.addEventListener('markerFound', () => {
+                    console.log('Marker found!');
+                    status.textContent = '✅ Marker detected! Showing AR content';
+                    status.style.background = 'rgba(76, 175, 80, 0.9)';
+                    instructions.classList.add('hidden');
+                });
+                
+                this.el.addEventListener('markerLost', () => {
+                    console.log('Marker lost');
+                    status.textContent = '🎯 Point camera at marker';
+                    status.style.background = 'rgba(25, 118, 210, 0.9)';
+                });
+            }
+        });
+        
+        // Add handler to marker
+        document.getElementById('marker0').setAttribute('marker-handler', '');
+        
+        // Update status after scene loads
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            setTimeout(() => {
+                document.getElementById('status').textContent = '🎯 Point camera at marker';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

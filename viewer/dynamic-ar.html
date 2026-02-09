@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduariseAR - AR Experience</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+        }
+
+        #controls h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+
+        #controls p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #1976D2;
+        }
+
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(76, 175, 80, 0.3);
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+        }
+
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h2>🎯 EduariseAR Experience</h2>
+        <p id="model-info">Ready to experience AR!</p>
+        <div class="button-group">
+            <button onclick="loadTestModel()">📦 Load Test Duck</button>
+            <button onclick="loadBrainModel()">🧠 Load Brain</button>
+            <button onclick="loadCustomModel()">🎨 Load Custom</button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <div id="instructions">
+        📸 Point your camera at a HIRO marker<br>
+        <small>Marker Image: <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" target="_blank" style="color: #4CAF50;">Download Here</a></small>
+    </div>
+
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true;"
+    >
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+
+        <!-- Hiro Marker -->
+        <a-marker id="marker" preset="hiro" smooth="true" smoothCount="5" smoothTolerance="0.01">
+            <!-- Dynamic Model Container -->
+            <a-entity id="ar-model" 
+                      position="0 0 0" 
+                      rotation="-90 0 0"
+                      scale="0.5 0.5 0.5"
+                      animation="property: rotation; to: -90 360 0; loop: true; dur: 10000; easing: linear"
+            >
+                <!-- Model will be loaded here dynamically -->
+            </a-entity>
+
+            <!-- Ground shadow/platform -->
+            <a-circle position="0 0 0" radius="0.5" color="#333" opacity="0.5"></a-circle>
+
+            <!-- Text label -->
+            <a-text id="ar-text" 
+                    value="EduariseAR" 
+                    position="0 0.6 0" 
+                    align="center" 
+                    color="#4CAF50"
+                    width="2"
+                    scale="0.5 0.5 0.5"
+            ></a-text>
+        </a-marker>
+    </a-scene>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentModel = null;
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const modelParam = urlParams.get('model');
+        const imageParam = urlParams.get('image');
+
+        // Status functions
+        function showStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+            status.style.background = isError ? 'rgba(244, 67, 54, 0.3)' : 'rgba(76, 175, 80, 0.3)';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateModelInfo(text) {
+            document.getElementById('model-info').textContent = text;
+        }
+
+        // Load model dynamically
+        function loadModel(url, name = 'AR Model') {
+            const modelContainer = document.getElementById('ar-model');
+            const textElement = document.getElementById('ar-text');
+
+            // Remove existing model
+            while (modelContainer.firstChild) {
+                modelContainer.removeChild(modelContainer.firstChild);
+            }
+
+            // Create new model
+            const model = document.createElement('a-entity');
+            model.setAttribute('gltf-model', `url(${url})`);
+            model.setAttribute('scale', '0.5 0.5 0.5');
+            
+            // Add to container
+            modelContainer.appendChild(model);
+
+            // Update text
+            textElement.setAttribute('value', name);
+            updateModelInfo(`Loaded: ${name}`);
+            showStatus(`✓ ${name} loaded successfully!`);
+
+            currentModel = url;
+            console.log('Loaded model:', url);
+
+            // Listen for model load events
+            model.addEventListener('model-loaded', () => {
+                console.log('Model loaded successfully!');
+            });
+
+            model.addEventListener('model-error', (e) => {
+                console.error('Model failed to load:', e);
+                showStatus('Failed to load model. Check console.', true);
+            });
+        }
+
+        // Preset models
+        function loadTestModel() {
+            loadModel(`${API_BASE}/uploads/models/duck.glb`, '🦆 Duck');
+        }
+
+        function loadBrainModel() {
+            loadModel(`${API_BASE}/uploads/models/brainstem.glb`, '🧠 Brain Stem');
+        }
+
+        function loadCustomModel() {
+            const url = prompt('Enter model URL (absolute or relative):', 
+                               `${API_BASE}/uploads/models/avocado.glb`);
+            if (url) {
+                const name = url.split('/').pop()?.replace('.glb', '') || 'Custom Model';
+                loadModel(url, name);
+            }
+        }
+
+        // Auto-load model from URL parameter
+        if (modelParam) {
+            let modelUrl = modelParam;
+            if (!modelUrl.startsWith('http')) {
+                modelUrl = `${API_BASE}${modelUrl}`;
+            }
+            const modelName = modelParam.split('/').pop()?.replace('.glb', '') || 'Custom';
+            loadModel(modelUrl, modelName);
+        } else {
+            // Load default duck model
+            loadTestModel();
+        }
+
+        // Marker found/lost events
+        const marker = document.querySelector('#marker');
+        marker.addEventListener('markerFound', () => {
+            console.log('Marker found!');
+            showStatus('✓ Marker detected! AR active');
+        });
+
+        marker.addEventListener('markerLost', () => {
+            console.log('Marker lost');
+        });
+
+        // Log when scene loads
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            console.log('AR scene loaded and ready!');
+            updateModelInfo('AR Scene Ready - Point at marker!');
+        });
+    </script>
+</body>
+</html>

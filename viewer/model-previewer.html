@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Previewer - EduariseAR</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        
+        .model-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .model-btn:hover {
+            background: #1976D2;
+        }
+        
+        .model-btn.active {
+            background: #4CAF50;
+        }
+        
+        .size-badge {
+            float: right;
+            font-size: 11px;
+            color: #ccc;
+        }
+        
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        .instructions {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h2>📦 Model Previewer</h2>
+        <p style="font-size: 12px; color: #aaa;">Click a model to view in 3D</p>
+        
+        <button class="model-btn active" onclick="loadModel('duck.glb')">
+            🦆 Duck <span class="size-badge">117 KB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('box.glb')">
+            📦 Box <span class="size-badge">1.6 KB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('box_textured.glb')">
+            🎨 Box (Textured) <span class="size-badge">5.8 KB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('box_animated.glb')">
+            ✨ Box (Animated) <span class="size-badge">11.7 KB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('avocado.glb')">
+            🥑 Avocado <span class="size-badge">7.9 MB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('brainstem.glb')">
+            🧠 Brain Stem <span class="size-badge">3.1 MB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('lantern.glb')">
+            🏮 Lantern <span class="size-badge">9.1 MB</span>
+        </button>
+        <button class="model-btn" onclick="loadModel('camera.glb')">
+            📷 Antique Camera <span class="size-badge">16.7 MB</span>
+        </button>
+    </div>
+
+    <div id="info">
+        <div id="model-name">🦆 Duck Model</div>
+        <div class="instructions">
+            🖱️ Click and drag to rotate | 📏 Scroll to zoom | 🔄 Models load from backend server
+        </div>
+    </div>
+
+    <a-scene>
+        <a-sky color="#1a1a1a"></a-sky>
+        
+        <!-- Lighting -->
+        <a-light type="ambient" color="#ffffff" intensity="0.5"></a-light>
+        <a-light type="directional" position="2 4 2" intensity="0.8"></a-light>
+        <a-light type="point" position="-2 2 2" color="#4CAF50" intensity="0.3"></a-light>
+        
+        <!-- Camera -->
+        <a-entity camera look-controls wasd-controls position="0 1.6 3"></a-entity>
+        
+        <!-- Platform -->
+        <a-circle position="0 0 0" rotation="-90 0 0" radius="2" color="#333333" 
+                  shadow="receive: true"></a-circle>
+        
+        <!-- Model container -->
+        <a-entity id="model-container" position="0 0.5 0" rotation="0 0 0">
+            <a-entity 
+                id="model" 
+                gltf-model="url(http://localhost:8000/uploads/models/duck.glb)"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
+                scale="1 1 1"
+                shadow="cast: true"
+            ></a-entity>
+        </a-entity>
+        
+        <!-- Grid -->
+        <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" 
+                 color="#2a2a2a" 
+                 material="side: double; wireframe: true; wireframeLinewidth: 1"></a-plane>
+    </a-scene>
+
+    <script>
+        const baseURL = 'http://localhost:8000/uploads/models/';
+        
+        const modelInfo = {
+            'duck.glb': '🦆 Duck Model (Classic AR Test)',
+            'box.glb': '📦 Simple Box (Math/Geometry)',
+            'box_textured.glb': '🎨 Textured Box (Math/Geometry)',
+            'box_animated.glb': '✨ Animated Box (Math/Geometry)',
+            'avocado.glb': '🥑 Avocado (Biology/Nutrition)',
+            'brainstem.glb': '🧠 Brain Stem (Anatomy/Science)',
+            'lantern.glb': '🏮 Lantern (History/Energy)',
+            'camera.glb': '📷 Antique Camera (Technology/History)'
+        };
+
+        function loadModel(filename) {
+            const modelEl = document.querySelector('#model');
+            const modelName = document.querySelector('#model-name');
+            
+            // Update model
+            modelEl.setAttribute('gltf-model', `url(${baseURL}${filename})`);
+            
+            // Update info
+            modelName.textContent = modelInfo[filename] || filename;
+            
+            // Update active button
+            document.querySelectorAll('.model-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            console.log('Loading model:', filename);
+        }
+
+        // Log when model loads
+        document.querySelector('#model').addEventListener('model-loaded', () => {
+            console.log('Model loaded successfully!');
+        });
+
+        document.querySelector('#model').addEventListener('model-error', (e) => {
+            console.error('Model failed to load:', e);
+            alert('Failed to load model. Make sure backend server is running on http://localhost:8000');
+        });
+    </script>
+</body>
+</html>

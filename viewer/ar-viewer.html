@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduariseAR Viewer</title>
+    
+    <!-- A-Frame & AR.js -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1976d2;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        #loading.hidden {
+            display: none;
+        }
+        
+        #ui-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        
+        #ui-overlay.show {
+            transform: translateY(0);
+        }
+        
+        .marker-info h2 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        
+        .marker-info p {
+            margin: 0 0 15px 0;
+            color: #666;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #1976d2;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        button:active {
+            background: #0d47a1;
+        }
+        
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 999;
+        }
+        
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="logo">🎓</div>
+        <h1>EduariseAR</h1>
+        <p>Loading AR experience...</p>
+    </div>
+    
+    <!-- Status Bar -->
+    <div id="status">
+        <span id="status-text">🎯 Point camera at marker</span>
+    </div>
+    
+    <!-- AR Scene -->
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;">
+        
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+        
+        <!-- Markers will be added dynamically here -->
+        
+    </a-scene>
+    
+    <!-- Info Overlay -->
+    <div id="ui-overlay">
+        <div class="marker-info">
+            <h2 id="marker-title">No marker detected</h2>
+            <p id="marker-description">Point your camera at an AR marker to see content.</p>
+            <div class="button-group">
+                <button id="audio-btn" onclick="playAudio()" style="display:none">
+                    🔊 Play Audio
+                </button>
+                <button id="quiz-btn" onclick="takeQuiz()" style="display:none">
+                    ✏️ Take Quiz
+                </button>
+                <button id="info-btn" onclick="showInfo()">
+                    ℹ️ More Info
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000';
+        let projectData = null;
+        let currentMarker = null;
+        let scene = null;
+        
+        // Initialize
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Get share code from URL
+            const shareCode = window.location.pathname.split('/').pop() || 'demo';
+            
+            try {
+                // Fetch AR scene data
+                const response = await fetch(`${API_BASE}/api/ar/${shareCode}`);
+                if (!response.ok) throw new Error('Project not found');
+                
+                projectData = await response.json();
+                console.log('Loaded project:', projectData);
+                
+                // Initialize AR scene
+                initializeARScene();
+                
+                // Hide loading screen
+                document.getElementById('loading').classList.add('hidden');
+                
+            } catch (error) {
+                console.error('Failed to load AR scene:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="logo">❌</div>
+                    <h1>Error</h1>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+        
+        function initializeARScene() {
+            scene = document.querySelector('a-scene');
+            
+            // Add markers dynamically
+            projectData.markers.forEach(markerData => {
+                const markerEl = document.createElement('a-marker');
+                markerEl.setAttribute('type', 'pattern');
+                markerEl.setAttribute('preset', 'custom');
+                markerEl.setAttribute('url', `${API_BASE}/uploads/markers/marker_${markerData.marker_id}.patt`);
+                
+                // Add 3D model if available
+                if (markerData.model_url) {
+                    const modelEl = document.createElement('a-entity');
+                    modelEl.setAttribute('gltf-model', `${API_BASE}${markerData.model_url}`);
+                    modelEl.setAttribute('scale', `${markerData.scale.x} ${markerData.scale.y} ${markerData.scale.z}`);
+                    modelEl.setAttribute('position', `${markerData.position.x} ${markerData.position.y} ${markerData.position.z}`);
+                    modelEl.setAttribute('rotation', `${markerData.rotation.x} ${markerData.rotation.y} ${markerData.rotation.z}`);
+                    markerEl.appendChild(modelEl);
+                }
+                
+                // Add image if available (fallback to 3D model)
+                if (markerData.image_url && !markerData.model_url) {
+                    const planeEl = document.createElement('a-plane');
+                    planeEl.setAttribute('src', `${API_BASE}${markerData.image_url}`);
+                    planeEl.setAttribute('scale', '1 1 1');
+                    planeEl.setAttribute('position', '0 0 0');
+                    markerEl.appendChild(planeEl);
+                }
+                
+                // Add title text
+                const textEl = document.createElement('a-text');
+                textEl.setAttribute('value', markerData.title);
+                textEl.setAttribute('align', 'center');
+                textEl.setAttribute('position', '0 1 0');
+                textEl.setAttribute('scale', '0.5 0.5 0.5');
+                textEl.setAttribute('color', '#1976d2');
+                markerEl.appendChild(textEl);
+                
+                // Marker events
+                markerEl.addEventListener('markerFound', () => {
+                    console.log('Marker found:', markerData.title);
+                    currentMarker = markerData;
+                    showMarkerInfo(markerData);
+                    updateStatus('✅ Marker detected!');
+                });
+                
+                markerEl.addEventListener('markerLost', () => {
+                    console.log('Marker lost:', markerData.title);
+                    currentMarker = null;
+                    hideMarkerInfo();
+                    updateStatus('🎯 Point camera at marker');
+                });
+                
+                scene.appendChild(markerEl);
+            });
+        }
+        
+        function showMarkerInfo(marker) {
+            const overlay = document.getElementById('ui-overlay');
+            document.getElementById('marker-title').textContent = marker.title;
+            document.getElementById('marker-description').textContent = marker.description || 'No description available.';
+            
+            // Show/hide buttons based on available content
+            document.getElementById('audio-btn').style.display = marker.audio_url ? 'block' : 'none';
+            document.getElementById('quiz-btn').style.display = marker.quizzes ? 'block' : 'none';
+            
+            overlay.classList.add('show');
+        }
+        
+        function hideMarkerInfo() {
+            document.getElementById('ui-overlay').classList.remove('show');
+        }
+        
+        function updateStatus(text) {
+            document.getElementById('status-text').textContent = text;
+        }
+        
+        function playAudio() {
+            if (currentMarker && currentMarker.audio_url) {
+                const audio = new Audio(`${API_BASE}${currentMarker.audio_url}`);
+                audio.play();
+            }
+        }
+        
+        function takeQuiz() {
+            alert('Quiz feature coming soon!');
+        }
+        
+        function showInfo() {
+            if (currentMarker) {
+                alert(`${currentMarker.title}\n\n${currentMarker.description}`);
+            }
+        }
+    </script>
+</body>
+</html>
